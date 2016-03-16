@@ -1,0 +1,168 @@
+%Total Code
+for j=1516:1525
+i=read(v,j);
+g=imcrop(i,[50 30 224 400]);
+r=red(g);
+d=black(g);
+cen=ball(g);
+red_stats=regionprops(r,'Centroid');
+dark_stats=regionprops(d,'Centroid');
+rconn=bwconncomp(r);
+dconn=bwconncomp(d);
+for k=1:rconn.NumObjects
+h=red_stats(k).Centroid;
+dif1=cen(1)-h(1);
+dif2=cen(2)-h(2);
+tot=hypot(dif1,dif2);
+dist(k)=tot;
+end
+for k=1:dconn.NumObjects
+h=dark_stats(k).Centroid;
+dif1=cen(1)-h(1);
+dif2=cen(2)-h(2);
+tot=hypot(dif1,dif2);
+distd(k)=tot;
+end
+
+for k=1:dconn.NumObjects
+if(distd(k)>11 && distd(k)<17)
+pos=k;
+possesion_dist=distd(k);
+end
+end
+
+  if(distd(pos)>13&&distd(pos)<17)
+    im=g;
+    frame=j;
+    offside_striker=offside1(im,pos);
+  end
+end
+
+
+
+for z=frame+1:1529
+    u=read(v,j);
+    c=imcrop(u,[50 30 224 400]);
+    b=black(c);
+    loc=ball(c);
+    mex_stats=regionprops(b,'Centroid');
+    bconn=bwconncomp(b);
+    for k=1:bconn.NumObjects
+h=mex_stats(k).Centroid;
+dif1=cen(1)-h(1);
+dif2=cen(2)-h(2);
+tot=hypot(dif1,dif2);
+mexd(k)=tot;
+    end
+if(mexd(offside_striker)<20)
+    foul=u;
+    imshow(u)
+    title(['OFFSIDE']);
+end
+end
+
+%to find red players
+function output=red(imagefile)
+i=imagefile;
+imR=i(:,:,1);
+imG=i(:,:,2);
+imB=i(:,:,3);
+im1=imsubtract(imR,imB);
+im2=imsubtract(imR,imG);
+im=imadd(im1,im2);
+output=im2bw(im,graythresh(im));
+output=bwareaopen(output,53);
+
+%to find black players
+function output=black(imagefile)
+i=imagefile;
+i1=rgb2gray(i);
+b=im2bw(i1,0.25);
+com=imcomplement(b);
+dil=imdilate(com,strel('line',14,100));
+e=imdilate(dil,strel('disk',2));
+t=bwareaopen(e,400);
+t=imfill(t,'holes');
+output=imerode(t,strel('line',22,90));
+
+%to find ball
+function ti=ball(imagefile)
+i=imagefile;
+i1=rgb2gray(i);
+b=im2bw(i1,0.65);
+dil=imdilate(b,strel('disk',1));
+B = bwboundaries(dil,'noholes');
+stats=regionprops(dil,'Area','Centroid');
+
+
+for k = 1:length(B)
+  boundary = B{k};
+  delta_sq = diff(boundary).^2;
+  perimeter = sum(sqrt(sum(delta_sq,2)));
+  area = stats(k).Area;
+  metric = 4*pi*area/perimeter^2;
+if metric > 1
+ if (area >15  && area <25 )
+ti=stats(k).Centroid;
+
+end
+end
+end
+
+%to find offside player
+function output=offside1(imagefile,position)
+i=imagefile;
+r=red(i);
+d=black(i);
+cen=ball(i);
+red_stats=regionprops(r,'Centroid');
+
+dark_stats=regionprops(d,'Centroid');
+rconn=bwconncomp(r);
+dconn=bwconncomp(d);
+for k=1:rconn.NumObjects
+h=red_stats(k).Centroid;
+dif1=cen(1)-h(1);
+dif2=cen(2)-h(2);
+tot=hypot(dif1,dif2);
+dist(k)=tot;
+end
+for k=1:dconn.NumObjects
+h=dark_stats(k).Centroid;
+dif1=cen(1)-h(1);
+dif2=cen(2)-h(2);
+tot=hypot(dif1,dif2);
+distd(k)=tot;
+end
+count=0;
+pos=position;
+attack=distd(pos);
+for k=1:rconn.NumObjects
+    defending_player=dist(k);
+    if (defending_player(1)>attack(1))
+        count=count+1;
+    end
+end
+if(count>1)
+sdp=red_stats(rconn.NumObjects-1).Centroid;
+for k=1:dconn.NumObjects
+    goal_score=dark_stats(k).Centroid;
+    if(goal_score(1)>sdp(1))
+       output=k;
+    end
+    
+end
+end
+if(count==1)
+
+for k=1:dconn.NumObjects
+    goal_score=dark_stats.Centroid;
+    if(goal_score(1)>attack(1))
+        output=k;
+    end
+end
+end
+    
+    
+
+
